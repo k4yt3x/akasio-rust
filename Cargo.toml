@@ -1,13 +1,32 @@
 [package]
-name = "akasio-rust"
-version = "0.1.0"
-authors = ["K4YT3X <k4yt3x@k4yt3x.com>"]
+authors = ["i@k4yt3x.com"]
+categories = ["web-programming::http-server"]
+description = "A simple Rust program that redirects HTTP requests"
 edition = "2018"
+homepage = "https://github.com/k4yt3x/akasio-rust"
+keywords = ["web"]
+license = "GPL-3.0-or-later"
+name = "akasio"
+readme = "README.md"
+repository = "https://github.com/k4yt3x/akasio-rust"
+version = "1.0.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "akasio"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+strip = "symbols"
+
 [dependencies]
 actix-web = "3"
+anyhow = "1.0"
 clap = "2"
-env_logger = "0.8"
-log = "0.4"
 serde_json = "1"
+slog = "2.7"
+slog-term = "2.8"
+#serde = { version = "1.0", features = ["derive"] }
+#tokio = { version = "1.10", features = ["full"] }
