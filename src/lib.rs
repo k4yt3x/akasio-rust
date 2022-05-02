@@ -75,6 +75,7 @@ async fn redirect(path: web::Path<String>, config: web::Data<Config>) -> HttpRes
 }
 
 pub async fn run(config: Config) -> Result<()> {
+    info!(&config.logger, "Starting Akasio server {}", VERSION);
     let bind_address = config.bind.clone();
     HttpServer::new(move || {
         actix_web::App::new()
