@@ -7,17 +7,15 @@ use slog::{error, info, warn};
 
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-pub struct Config
-{
+#[derive(Clone)]
+pub struct Config {
     logger: slog::Logger,
     bind: String,
     redirect_table_path: String,
 }
 
-impl Config
-{
-    pub fn new(logger: slog::Logger, bind: String, redirect_table_path: String) -> Config
-    {
+impl Config {
+    pub fn new(logger: slog::Logger, bind: String, redirect_table_path: String) -> Config {
         Config {
             logger,
             bind,
@@ -26,16 +24,15 @@ impl Config
     }
 }
 
-pub fn read_redirect_table(config: &Config, path: String) -> result::Result<String, Value>
-{
+pub fn read_redirect_table(config: &Config, path: String) -> result::Result<String, Value> {
     // read the redirect table and return the path's corresponding destination URL
 
     // read JSON file into a string
-    let redirect_table = fs::read_to_string("akasio.json");
+    let redirect_table = fs::read_to_string(&config.redirect_table_path);
     let redirect_table = match redirect_table {
         Ok(value) => value,
         Err(_e) => {
-            error!(config.logger, "Error reading the redirect table");
+            error!(&config.logger, "Error reading the redirect table");
             return Err(Value::Null);
         }
     };
@@ -45,7 +42,7 @@ pub fn read_redirect_table(config: &Config, path: String) -> result::Result<Stri
     let value = match value {
         Ok(value) => value,
         Err(_e) => {
-            error!(config.logger, "Error reading the redirect table");
+            error!(&config.logger, "Error reading the redirect table");
             Value::Null
         }
     };
@@ -60,7 +57,7 @@ pub fn read_redirect_table(config: &Config, path: String) -> result::Result<Stri
     // if key is not found, return Null
     if target_url == &Value::Null {
         warn!(
-            config.logger,
+            &config.logger,
             "Path {} was not found in the redirect table", lookup_string
         );
         return Err(Value::Null);
@@ -71,8 +68,7 @@ pub fn read_redirect_table(config: &Config, path: String) -> result::Result<Stri
 }
 
 #[get("/{path}")]
-async fn redirect(config: &Config, path: web::Path<String>) -> HttpResponse
-{
+async fn redirect(path: web::Path<String>, config: web::Data<Config>) -> HttpResponse {
     // HTTP request handler
 
     // read redirect destination into string
@@ -80,7 +76,7 @@ async fn redirect(config: &Config, path: web::Path<String>) -> HttpResponse
         Ok(destination) => destination,
         Err(_e) => {
             // if the read returned Null, return not found
-            info!(config.logger, "Path not found, serving 404");
+            info!(&config.logger, "Path not found, serving 404");
             return HttpResponse::NotFound()
                 .content_type("text/plain")
                 .body("Not Found");
@@ -88,17 +84,20 @@ async fn redirect(config: &Config, path: web::Path<String>) -> HttpResponse
     };
 
     // if the read succeeded, return 302 found
-    info!(config.logger, "Path found, serving 302");
+    info!(&config.logger, "Path found, serving 302");
     return HttpResponse::Found()
         .header("Location", destination)
         .finish();
 }
 
-async fn run(bind: &str) -> Result<()>
-{
-    HttpServer::new(|| actix_web::App::new().service(redirect))
-        .bind(bind)?
-        .run()
-        .await?;
+pub async fn run(config: &'static Config) -> Result<()> {
+    HttpServer::new(move || {
+        actix_web::App::new()
+            .app_data(web::Data::new(config))
+            .service(redirect)
+    })
+    .bind(config.bind.clone())?
+    .run()
+    .await?;
     Ok(())
 }

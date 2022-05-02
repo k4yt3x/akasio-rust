@@ -24,9 +24,8 @@ strip = "symbols"
 [dependencies]
 actix-web = "3"
 anyhow = "1.0"
-clap = "2"
+clap = { version = "3.1", features = ["env"] }
 serde_json = "1"
 slog = "2.7"
-slog-term = "2.8"
-#serde = { version = "1.0", features = ["derive"] }
-#tokio = { version = "1.10", features = ["full"] }
+slog-term = "2.9"
+tokio = { version = "1.10", features = ["full"] }
