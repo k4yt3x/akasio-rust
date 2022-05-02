@@ -1,4 +1,4 @@
-use std::{fs, result};
+use std::fs;
 
 use actix_web::{get, web, HttpResponse, HttpServer};
 use anyhow::Result;
@@ -24,7 +24,7 @@ impl Config {
     }
 }
 
-pub fn read_redirect_table(config: &Config, path: String) -> result::Result<String, Value> {
+pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Value> {
     // read the redirect table and return the path's corresponding destination URL
 
     // read JSON file into a string
@@ -56,10 +56,6 @@ pub fn read_redirect_table(config: &Config, path: String) -> result::Result<Stri
 
     // if key is not found, return Null
     if target_url == &Value::Null {
-        warn!(
-            &config.logger,
-            "Path {} was not found in the redirect table", lookup_string
-        );
         return Err(Value::Null);
     }
 
@@ -69,14 +65,12 @@ pub fn read_redirect_table(config: &Config, path: String) -> result::Result<Stri
 
 #[get("/{path}")]
 async fn redirect(path: web::Path<String>, config: web::Data<Config>) -> HttpResponse {
-    // HTTP request handler
-
     // read redirect destination into string
     let destination = match read_redirect_table(&config, path.to_string()) {
         Ok(destination) => destination,
         Err(_e) => {
             // if the read returned Null, return not found
-            info!(&config.logger, "Path not found, serving 404");
+            warn!(&config.logger, "Serving 404 for: /{}", path);
             return HttpResponse::NotFound()
                 .content_type("text/plain")
                 .body("Not Found");
@@ -84,19 +78,20 @@ async fn redirect(path: web::Path<String>, config: web::Data<Config>) -> HttpRes
     };
 
     // if the read succeeded, return 302 found
-    info!(&config.logger, "Path found, serving 302");
+    info!(&config.logger, "Serving 302 for: /{}", path);
     return HttpResponse::Found()
-        .header("Location", destination)
+        .append_header(("Location", destination))
         .finish();
 }
 
-pub async fn run(config: &'static Config) -> Result<()> {
+pub async fn run(config: Config) -> Result<()> {
+    let bind_address = config.bind.clone();
     HttpServer::new(move || {
         actix_web::App::new()
-            .app_data(web::Data::new(config))
+            .app_data(web::Data::new(config.clone()))
             .service(redirect)
     })
-    .bind(config.bind.clone())?
+    .bind(bind_address)?
     .run()
     .await?;
     Ok(())

@@ -51,7 +51,7 @@ async fn main() {
             eprintln!("Program initialization error: {}", e);
             process::exit(1);
         }
-        Ok(config) => process::exit(match run(&config).await {
+        Ok(config) => process::exit(match run(config).await {
             Ok(_) => 0,
             Err(e) => {
                 eprintln!("Error: {}", e);
