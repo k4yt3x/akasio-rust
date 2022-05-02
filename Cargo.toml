@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 name = "akasio"
 readme = "README.md"
 repository = "https://github.com/k4yt3x/akasio-rust"
-version = "1.0.0"
+version = "2.0.0"
 
 [[bin]]
 name = "akasio"

@@ -25,11 +25,8 @@ impl Config {
 }
 
 pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Value> {
-    // read the redirect table and return the path's corresponding destination URL
-
     // read JSON file into a string
-    let redirect_table = fs::read_to_string(&config.redirect_table_path);
-    let redirect_table = match redirect_table {
+    let redirect_table = match fs::read_to_string(&config.redirect_table_path) {
         Ok(value) => value,
         Err(_e) => {
             error!(&config.logger, "Error reading the redirect table");
@@ -38,8 +35,7 @@ pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Valu
     };
 
     // parse JSON string
-    let value = serde_json::from_str(&redirect_table);
-    let value = match value {
+    let value = match serde_json::from_str(&redirect_table) {
         Ok(value) => value,
         Err(_e) => {
             error!(&config.logger, "Error reading the redirect table");
@@ -47,12 +43,8 @@ pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Valu
         }
     };
 
-    // create lookup string
-    let mut lookup_string = "/".to_owned();
-    lookup_string.push_str(&path);
-
     // get target URL
-    let target_url = &value[&lookup_string];
+    let target_url = &value[format!("/{}", &path)];
 
     // if key is not found, return Null
     if target_url == &Value::Null {
@@ -66,22 +58,20 @@ pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Valu
 #[get("/{path}")]
 async fn redirect(path: web::Path<String>, config: web::Data<Config>) -> HttpResponse {
     // read redirect destination into string
-    let destination = match read_redirect_table(&config, path.to_string()) {
-        Ok(destination) => destination,
-        Err(_e) => {
-            // if the read returned Null, return not found
-            warn!(&config.logger, "Serving 404 for: /{}", path);
-            return HttpResponse::NotFound()
-                .content_type("text/plain")
-                .body("Not Found");
-        }
-    };
-
     // if the read succeeded, return 302 found
-    info!(&config.logger, "Serving 302 for: /{}", path);
-    return HttpResponse::Found()
-        .append_header(("Location", destination))
-        .finish();
+    if let Ok(destination) = read_redirect_table(&config, path.to_string()) {
+        info!(&config.logger, "Serving 302 for: /{}", path);
+        HttpResponse::Found()
+            .append_header(("Location", destination))
+            .finish()
+    }
+    // if the read returned Null, return 404 not found
+    else {
+        warn!(&config.logger, "Serving 404 for: /{}", path);
+        HttpResponse::NotFound()
+            .content_type("text/plain")
+            .body("Not Found")
+    }
 }
 
 pub async fn run(config: Config) -> Result<()> {
