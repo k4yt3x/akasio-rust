@@ -1,7 +1,7 @@
 use std::fs;
 
 use actix_web::{web, web::Data, HttpRequest, HttpResponse, HttpServer};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde_json::Value;
 use slog::{error, info, warn};
 
@@ -24,57 +24,62 @@ impl Config {
     }
 }
 
-pub fn read_redirect_table(config: &Config, path: String) -> Result<String, Value> {
+pub fn read_redirect_table(config: &Config, path: String) -> Result<Option<String>> {
     // read JSON file into a string
-    let redirect_table = match fs::read_to_string(&config.redirect_table_path) {
-        Ok(value) => value,
-        Err(_e) => {
-            error!(&config.logger, "Error reading the redirect table");
-            return Err(Value::Null);
-        }
-    };
+    let redirect_table = fs::read_to_string(&config.redirect_table_path)?;
 
     // parse JSON string
-    let value = match serde_json::from_str(&redirect_table) {
-        Ok(value) => value,
-        Err(_e) => {
-            error!(&config.logger, "Error reading the redirect table");
-            Value::Null
-        }
-    };
+    let value: Value = serde_json::from_str(&redirect_table)?;
 
     // get target URL
-    let target_url = &value[path];
-
-    // if key is not found, return Null
-    if target_url == &Value::Null {
-        return Err(Value::Null);
+    if let Some(target_url) = value.get(&path) {
+        if target_url.is_string() {
+            if let Some(target_string) = target_url.as_str() {
+                return Ok(Some(target_string.to_string()));
+            }
+            else {
+                return Err(anyhow!("failed to convert JSON value into string"));
+            }
+        }
     }
 
-    // if everything works out fine, return target URL as a String
-    Ok(target_url.to_string())
+    Ok(None)
 }
 
 async fn redirect(request: HttpRequest, config: Data<Config>) -> HttpResponse {
     // read redirect destination into string
     // if the read succeeded, return 302 found
-    if let Ok(destination) = read_redirect_table(&config, request.path().to_string()) {
-        info!(
-            &config.logger,
-            "302 redirecting {} to {}",
-            request.path(),
-            destination
-        );
-        HttpResponse::Found()
-            .append_header(("Location", destination))
-            .finish()
-    }
-    // if the read returned Null, return 404 not found
-    else {
-        warn!(&config.logger, "404 not found for {}", request.path());
-        HttpResponse::NotFound()
-            .content_type("text/plain")
-            .body("Not Found")
+    match read_redirect_table(&config, request.path().to_string()) {
+        Ok(lookup_result) => {
+            if let Some(destination) = lookup_result {
+                info!(
+                    &config.logger,
+                    "302 redirecting {} to {}",
+                    request.path(),
+                    destination
+                );
+                HttpResponse::Found()
+                    .append_header(("Location", destination))
+                    .finish()
+            }
+            else {
+                warn!(&config.logger, "404 not found {}", request.path());
+                HttpResponse::NotFound()
+                    .content_type("text/plain")
+                    .body("NotFound")
+            }
+        }
+        Err(error) => {
+            error!(
+                &config.logger,
+                "500 internal server error {} {}",
+                request.path(),
+                error
+            );
+            HttpResponse::InternalServerError()
+                .content_type("text/plain")
+                .body("Internal Server Error")
+        }
     }
 }
 

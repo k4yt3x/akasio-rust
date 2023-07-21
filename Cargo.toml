@@ -2,14 +2,14 @@
 authors = ["i@k4yt3x.com"]
 categories = ["web-programming::http-server"]
 description = "A simple Rust program that redirects HTTP requests"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/k4yt3x/akasio-rust"
 keywords = ["web"]
 license = "GPL-3.0-or-later"
 name = "akasio"
 readme = "README.md"
 repository = "https://github.com/k4yt3x/akasio-rust"
-version = "2.0.1"
+version = "2.1.0"
 
 [[bin]]
 name = "akasio"
@@ -22,10 +22,10 @@ opt-level = 3
 strip = "symbols"
 
 [dependencies]
-actix-web = "4"
+actix-web = "4.3"
 anyhow = "1.0"
-clap = { version = "3.1", features = ["env"] }
-serde_json = "1"
+clap = { version = "4.3", features = ["env", "derive"] }
+serde_json = "1.0"
 slog = "2.7"
 slog-term = "2.9"
-tokio = { version = "1.10", features = ["full"] }
+tokio = { version = "1.29", features = ["full"] }
