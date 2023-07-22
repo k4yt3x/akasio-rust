@@ -47,11 +47,40 @@ pub fn read_redirect_table(config: &Config, path: String) -> Result<Option<Strin
 }
 
 async fn redirect(request: HttpRequest, config: Data<Config>) -> HttpResponse {
+    let segments: Vec<&str> = request.path().split('/').collect();
+
+    // there has to be at least two segments
+    // return an internal server error instead of panic
+    if segments.len() < 2 {
+        error!(
+            &config.logger,
+            "500 internal server error {}",
+            request.path()
+        );
+        return HttpResponse::InternalServerError()
+            .content_type("text/plain")
+            .body("Internal Server Error");
+    }
+
+    let (first, rest) = segments.split_at(2);
+
     // read redirect destination into string
     // if the read succeeded, return 302 found
-    match read_redirect_table(&config, request.path().to_string()) {
+    match read_redirect_table(&config, format!("/{}", first[1])) {
         Ok(lookup_result) => {
-            if let Some(destination) = lookup_result {
+            if let Some(target) = lookup_result {
+                let destination = format!(
+                    "{}{}{}",
+                    target,
+                    {
+                        match target.chars().last() {
+                            Some('/') => "",
+                            _ => "/",
+                        }
+                    },
+                    rest.join("/")
+                );
+
                 info!(
                     &config.logger,
                     "302 redirecting {} to {}",
