@@ -9,7 +9,7 @@ Type=simple
 User=nobody
 Group=nogroup
 WorkingDirectory=/etc
-ExecStart=/usr/local/bin/akasio -r /etc/akasio.json
+ExecStart=/usr/local/bin/akasio -t /etc/akasio.json
 Restart=always
 
 [Install]

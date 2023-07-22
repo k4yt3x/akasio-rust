@@ -1,6 +1,4 @@
-<h1>This page is inaccurate and is pending updates.</h1>
-
-# Akasio (Rust)
+# [Akasio (Rust)](https://github.com/k4yt3x/akasio-rust)
 
 ## Description
 
@@ -8,7 +6,7 @@ Akasio is a simple HTTP server that redirects traffic based on a JSON redirect t
 
 If you own a domain and wish to self-host a URL-shortening service, then this is the right tool for you.
 
-Originally, Akasio is a backend server for website [akas.io](akas.io) (akas stands for "also known as") written in Python and Flask. After rewriting the server with Golang, I decided to open-source it for anyone else that might be interested by it. It is both very easy to deploy and very easy to maintain, thanks to Golang's handy single-binary release (let's not talk about its size here).
+Originally, Akasio is a backend server for website [akas.io](https://akas.io) (akas stands for "also known as") written in Python and Flask. There is a previous attempt to port this program [to Golang](https://github.com/k4yt3x/akasio-go), but I didn't really like how Go works so I decided to rewrite it in Rust. This program requires only one JSON file as its configuration file, and can be deployed with a minimal container image as small as 8.5 MiB (on-disk size).
 
 ## Why Akasio
 
@@ -16,9 +14,13 @@ Originally, Akasio is a backend server for website [akas.io](akas.io) (akas stan
 
 Personally, I find sending long URLs like `https://gist.githubusercontent.com/k4yt3x/3b41a1a65f5d3087133e449793eb8858/raw` to people pretty annoying, since you'll either have to copy and paste the whole URL or type the whole URL out. URL shorteners like Akasio solve this issue. All that's needed to be done to send such a long URL is just to create a new mapping in the redirect table (akas.io/z).
 
-> What are Akasio's benefits compared to services like bit.ly?
+> What are Akasio's benefits compared to services like [bit.ly](https://bit.ly)?
 
 Akasio is self-hosted, and the redirect table is just a JSON file. This gives the users lots of flexibilities. The JSON file on the server can be symbolic-linked from a local workstation, updated by a front-end webpage, generated from a program, and so on.
+
+> Are there even lighter alternatives if I don't want to set a server up?
+
+Yes. You can use cloud functions like [AWS Lambda](https://aws.amazon.com/lambda/) to run a similar redirection service. Cloud function scripts can be written in Python, JavaScript, and several other languages. You can seek alternative solutions that are written for cloud functions.
 
 ## Usages
 
@@ -30,9 +32,9 @@ Akasio redirects incoming requests based on what's called a "redirect table". Th
 
 ```json
 {
-    "/": "http://k4yt3x.com/akasio-rust",
-    "/g": "https://github.com/k4yt3x",
-    "/k4yt3x": "https://k4yt3x.com"
+  "/": "http://k4yt3x.com/akasio-rust",
+  "/g": "https://github.com/k4yt3x",
+  "/k4yt3x": "https://k4yt3x.com"
 }
 ```
 
@@ -58,8 +60,9 @@ The recommended setup is to start Akasio as a service behind reverse proxy web s
 
 A typical stand-alone setup process will look like the following.
 
-1. Build the `akasio` binary or download the `akasio` binary from [releases](https://github.com/k4yt3x/akasio-rust/releases) (coming soon).
+1. Build the `akasio` binary or download the `akasio` binary from [releases](https://github.com/k4yt3x/akasio-rust/releases).
 1. Move the `akasio` binary to `/usr/local/bin/akasio`.
+1. Modify the configuration file and put it at `/etc/akasio.json`.
 1. Move the service file to `/etc/systemd/system/akasio.service`.
 1. Reload systemd with `systemctl daemon-reload`.
 1. Enable and start the service with `systemctl enable --now akasio`.
@@ -71,54 +74,48 @@ A typical stand-alone setup process will look like the following.
 The binary's usage is as following. You can also invoke `akasio -h` to see the usages.
 
 ```console
-Akasio Redirector 0.1.0
-K4YT3X <k4yt3x@k4yt3x.com>
-A simple Rust program that redirects HTTP requests.
+A simple Rust program that redirects HTTP requests
 
-USAGE:
-    akasio-rust [FLAGS] [OPTIONS]
+Usage: akasio [OPTIONS]
 
-FLAGS:
-    -d, --debug      enable debugging mode
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-OPTIONS:
-    -b, --bind <BIND_ADDRESS>    binding IP address and port (IP:PORT)
+Options:
+  -b, --bind <BIND>    [default: 127.0.0.1:8000]
+  -t, --table <TABLE>  [default: akasio.json]
+  -h, --help           Print help
+  -V, --version        Print version
 ```
 
-The command below, for instance, launches Akasio, reads configurations from the file `/etc/akasio.json`, and serves domains `akas.io` and `ffg.gg`.
+The command below, for instance, launches Akasio, reading configurations from the file `/etc/akasio.json`.
 
 ```shell
-/usr/local/bin/akasio -r /etc/akasio.json -n akas.io -n ffg.gg
+/usr/local/bin/akasio -t /etc/akasio.json
 ```
 
 ### Running from Docker
 
-Akasio is also available on Docker Hub. Below is an example how you can run Akasio with Docker. Be sure to create the redirect table and change the redirect table's path in the command below. You'll also need to change the server's hostname.
+Akasio is also available as a container image. Below is an example how you can run Akasio with Docker. Be sure to create the redirect table and change the redirect table's path in the command below.
 
 ```shell
-docker run -it -p 8000:8000 -v $PWD/akasio.json:/etc/akasio.json -h akasio --name akasio k4yt3x/akasio-go:1.1.1 -n akas.io
+docker run -it -p 8000:8000 -v $PWD/akasio.json:/etc/akasio.json -h akasio --name akasio ghcr.io/k4yt3x/akasio:2.1.0
 
 docker run -it \                                            # interactive
            -p 8000:8000 \                                   # bind container port to host's port 8000
            -v $PWD/akasio.json:/etc/akasio.json \           # bind mount host's akasio.json file under the current directory to container's /etc/akasio.json
            -h akasio \                                      # set container hostname akasio
            --name akasio \                                  # set container name akasio
-           k4yt3x/akasio-go:1.1.1 \                         # container name
-           -n akas.io                                       # listening hostnames
+           ghcr.io/k4yt3x/akasio:latest \                   # container name
 ```
 
 After spinning the container up, you can verify that it's running correctly by making a query with `curl` or any other tool of your preference.
 
 ## Building From Source
 
-The following commands will build Akasio binary at `bin/akasio`.
+The following commands will build Akasio binary at `target/release/akasio`.
 
 ```shell
 git clone https://github.com/k4yt3x/akasio-rust.git
-cd akasio-go
-cargo build
+cd akasio-rust
+cargo build --release
 ```
 
 After building, you may also use `sudo make install` to install `akasio` to `/usr/local/bin/akasio`.

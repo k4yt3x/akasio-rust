@@ -13,7 +13,7 @@ struct Args {
     bind: String,
 
     // path to the redirect table file
-    #[arg(short, long, default_value = "akasio.json")]
+    #[arg(short, long, default_value = "/etc/akasio.json")]
     table: String,
 }
 
