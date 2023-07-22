@@ -1,4 +1,4 @@
-FROM rust:1.59-alpine3.15 as builder
+FROM rust:1.71.0-alpine3.18 as builder
 COPY . /app
 WORKDIR /app
 RUN apk add --no-cache --virtual .build-deps \
